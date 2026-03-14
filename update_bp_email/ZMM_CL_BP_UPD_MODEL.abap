@@ -350,10 +350,9 @@ CLASS ZMM_CL_BP_UPD_MODEL IMPLEMENTATION.
     LOOP AT lt_excel ASSIGNING FIELD-SYMBOL(<fs_excel>) WHERE row <> '0001'.
       AT NEW row.
         APPEND INITIAL LINE TO et_data ASSIGNING <fs_data>.
+        <fs_data>-businesspartner = <fs_excel>-value.
       ENDAT.
       CASE <fs_excel>-col.
-        WHEN '0001'.
-          <fs_data>-businesspartner = <fs_excel>-value.
         WHEN '0002'.
           <fs_data>-email_x = <fs_excel>-value.
         WHEN '0003'.
@@ -362,7 +361,7 @@ CLASS ZMM_CL_BP_UPD_MODEL IMPLEMENTATION.
           <fs_data>-email = <fs_excel>-value.
         WHEN '0005'.
           <fs_data>-notes = <fs_excel>-value.
-        WHEN '0006'.
+        WHEN '0005'.
           <fs_data>-std_no = <fs_excel>-value.
       ENDCASE.
     ENDLOOP.
