@@ -289,6 +289,18 @@ CLASS ZMM_CL_BP_UPD_MODEL IMPLEMENTATION.
       ENDTRY.
     ENDLOOP.
 
+    "-- 5b. Append notes-only rows that had no matching ADR6 email entry ----
+    LOOP AT address_tmp ASSIGNING FIELD-SYMBOL(<fs_adrt_only>).
+      IF NOT line_exists( address_data[ consnumber = <fs_adrt_only>-consnumber ] ).
+        APPEND INITIAL LINE TO address_data ASSIGNING FIELD-SYMBOL(<fs_notes_row>).
+        <fs_notes_row>-businesspartner = bp_padded.
+        <fs_notes_row>-notes           = <fs_adrt_only>-notes.
+        <fs_notes_row>-language        = <fs_adrt_only>-language.
+        <fs_notes_row>-consnumber      = <fs_adrt_only>-consnumber.
+        <fs_notes_row>-notes_x         = abap_true.
+      ENDIF.
+    ENDLOOP.
+
     "-- 6. Guard: at least email or note must be present --------------------
     IF address_data IS INITIAL.
       error_message = |BP { business_partner }: no e-mail or address note found in remote ADR6/ADRT|.
@@ -331,16 +343,17 @@ CLASS ZMM_CL_BP_UPD_MODEL IMPLEMENTATION.
         OTHERS                  = 3.
 
     IF sy-subrc <> 0.
-      ev_error_msg = |Excel upload failed (TEXT_CONVERT_XLS_TO_SAP rc={ sy-subrc })|.
+      ev_error_msg = |Excel upload failed (ALSM_EXCEL_TO_INTERNAL_TABLE rc={ sy-subrc })|.
       RETURN.
     ENDIF.
 
     LOOP AT lt_excel ASSIGNING FIELD-SYMBOL(<fs_excel>) WHERE row <> '0001'.
       AT NEW row.
         APPEND INITIAL LINE TO et_data ASSIGNING <fs_data>.
-        <fs_data>-businesspartner = <fs_excel>-value.
       ENDAT.
       CASE <fs_excel>-col.
+        WHEN '0001'.
+          <fs_data>-businesspartner = <fs_excel>-value.
         WHEN '0002'.
           <fs_data>-email_x = <fs_excel>-value.
         WHEN '0003'.
@@ -349,7 +362,7 @@ CLASS ZMM_CL_BP_UPD_MODEL IMPLEMENTATION.
           <fs_data>-email = <fs_excel>-value.
         WHEN '0005'.
           <fs_data>-notes = <fs_excel>-value.
-        WHEN '0005'.
+        WHEN '0006'.
           <fs_data>-std_no = <fs_excel>-value.
       ENDCASE.
     ENDLOOP.

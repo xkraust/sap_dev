@@ -79,18 +79,6 @@ CLASS ZMM_CL_BP_UPD_VIEW IMPLEMENTATION.
       iv_short = 'Var3'  iv_medium = 'Msg Var 3'   iv_long = 'Message Variable 3' iv_length = 25 ).
     set_column_texts( io_cols = lo_cols  iv_fieldname = 'MESSAGE_V4'
       iv_short = 'Var4'  iv_medium = 'Msg Var 4'   iv_long = 'Message Variable 4' iv_length = 10 ).
-    set_column_texts( io_cols = lo_cols  iv_fieldname = 'PARAMETER'
-      iv_short = 'Param' iv_medium = 'Parameter'   iv_long = 'BAPI Parameter'    iv_length = 15 ).
-    set_column_texts( io_cols = lo_cols  iv_fieldname = 'FIELD'
-      iv_short = 'Field' iv_medium = 'Field'        iv_long = 'BAPI Field'        iv_length = 12 ).
-    set_column_texts( io_cols = lo_cols  iv_fieldname = 'SYSTEM'
-      iv_short = 'Sys'   iv_medium = 'System'       iv_long = 'System'            iv_length = 12 ).
-
-    "Hide the technical color column from display
-    TRY.
-        lo_cols->get_column( 'LINE_COLOR' )->set_visible( abap_false ).
-      CATCH cx_salv_not_found.                            "#EC NO_HANDLER
-    ENDTRY.
   ENDMETHOD.
 
 
@@ -214,14 +202,6 @@ CLASS ZMM_CL_BP_UPD_VIEW IMPLEMENTATION.
 
     "-- Column configuration -----------------------------------------
     configure_columns( lo_salv ).
-
-    "-- Row color via LINE_COLOR field in ty_errorlog ----------------
-    TRY .
-"        DATA(lo_cols) = lo_salv->get_columns( ).
-"        lo_cols->set_color_column( 'LINE_COLOR' ).
-      CATCH cx_salv_data_error.
-
-    ENDTRY.
 
     "-- Sort: errors (E) first, then warnings (W), then success (S) --
     TRY.
