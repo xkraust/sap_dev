@@ -289,18 +289,6 @@ CLASS ZMM_CL_BP_UPD_MODEL IMPLEMENTATION.
       ENDTRY.
     ENDLOOP.
 
-    "-- 5b. Append notes-only rows that had no matching ADR6 email entry ----
-    LOOP AT address_tmp ASSIGNING FIELD-SYMBOL(<fs_adrt_only>).
-      IF NOT line_exists( address_data[ consnumber = <fs_adrt_only>-consnumber ] ).
-        APPEND INITIAL LINE TO address_data ASSIGNING FIELD-SYMBOL(<fs_notes_row>).
-        <fs_notes_row>-businesspartner = bp_padded.
-        <fs_notes_row>-notes           = <fs_adrt_only>-notes.
-        <fs_notes_row>-language        = <fs_adrt_only>-language.
-        <fs_notes_row>-consnumber      = <fs_adrt_only>-consnumber.
-        <fs_notes_row>-notes_x         = abap_true.
-      ENDIF.
-    ENDLOOP.
-
     "-- 6. Guard: at least email or note must be present --------------------
     IF address_data IS INITIAL.
       error_message = |BP { business_partner }: no e-mail or address note found in remote ADR6/ADRT|.
