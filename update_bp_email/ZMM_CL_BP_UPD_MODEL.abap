@@ -76,7 +76,7 @@ private section.
     importing
       !RFC_DESTINATION type RFCDEST
       !TABLE_NAME type TABNAME
-      !WHERE_CLAUSE type RFC_DB_OPT
+      !WHERE_CLAUSE type ESH_T_CO_RFCRT_OPTIONS
       !FIELD_NAMES type STRINGTAB optional
     exporting
       !RESULT_ROWS type ESH_T_CO_RFCRT_DATA
@@ -173,7 +173,7 @@ CLASS ZMM_CL_BP_UPD_MODEL IMPLEMENTATION.
     DATA(bp_padded) = CONV bu_partner( |{ business_partner ALPHA = IN }| ).
 
     "-- 1. Look up address number: check LFA1 (vendor) first ----------------
-    DATA(where_lfa1)    = CONV rfc_db_opt( |LIFNR EQ '{ bp_padded }'| ).
+    DATA(where_lfa1)    = VALUE esh_t_co_rfcrt_options( ( |LIFNR EQ { cl_abap_dyn_prg=>quote( bp_padded ) }| ) ).
     DATA(fields_lfa1)   = VALUE stringtab( ( |LIFNR| ) ( |ADRNR| ) ).
     DATA(found_in_lfa1) = read_remote_table( EXPORTING rfc_destination = rfc_destination
                                                        table_name      = lfa1_table
@@ -183,42 +183,42 @@ CLASS ZMM_CL_BP_UPD_MODEL IMPLEMENTATION.
                                                        fields_tab      = lfa1_fields
                                                        error_message   = error_message ).
 
-    DATA address_number TYPE adrnr.
+    DATA address_lfa1 TYPE adrnr.
+    DATA address_kna1 TYPE adrnr.
 
     IF found_in_lfa1 = abap_true AND lines( lfa1_rows ) > 0.
-      address_number = extract_field_value( data_line  = lfa1_rows[ 1 ]
-                                            fields_tab = lfa1_fields
-                                            field_name = 'ADRNR' ).
+      address_lfa1 = extract_field_value( data_line  = lfa1_rows[ 1 ]
+                                          fields_tab = lfa1_fields
+                                          field_name = 'ADRNR' ).
     ENDIF.
 
     "-- 2. Fall back to KNA1 (customer) if not found in LFA1 ----------------
-    IF address_number IS INITIAL.
-      DATA(where_kna1)  = CONV rfc_db_opt( |KUNNR EQ '{ bp_padded }'| ).
-      DATA(fields_kna1) = VALUE stringtab( ( |KUNNR| ) ( |ADRNR| ) ).
+    DATA(where_kna1)  = VALUE esh_t_co_rfcrt_options( ( |KUNNR EQ '{ bp_padded }'| ) ).
+    DATA(fields_kna1) = VALUE stringtab( ( |KUNNR| ) ( |ADRNR| ) ).
 
 
-      DATA(found_in_kna1) = read_remote_table( EXPORTING rfc_destination = rfc_destination
-                                                         table_name      = kna1_table
-                                                         where_clause    = where_kna1
-                                                         field_names     = fields_kna1
-                                               IMPORTING result_rows     = kna1_rows
-                                                         fields_tab      = kna1_fields
-                                                         error_message   = error_message ).
+    DATA(found_in_kna1) = read_remote_table( EXPORTING rfc_destination = rfc_destination
+                                                       table_name      = kna1_table
+                                                       where_clause    = where_kna1
+                                                       field_names     = fields_kna1
+                                             IMPORTING result_rows     = kna1_rows
+                                                       fields_tab      = kna1_fields
+                                                       error_message   = error_message ).
 
-      IF found_in_kna1 = abap_true AND lines( kna1_rows ) > 0.
-        address_number = extract_field_value( data_line  = kna1_rows[ 1 ]
-                                              fields_tab = kna1_fields
-                                              field_name = 'ADRNR' ).
-      ENDIF.
+    IF found_in_kna1 = abap_true AND lines( kna1_rows ) > 0.
+      address_kna1 = extract_field_value( data_line  = kna1_rows[ 1 ]
+                                          fields_tab = kna1_fields
+                                          field_name = 'ADRNR' ).
     ENDIF.
 
-    IF address_number IS INITIAL.
+    IF address_kna1 IS INITIAL AND address_lfa1 IS INITIAL.
       error_message = |BP { business_partner }: not found in LFA1 or KNA1 on remote system|.
       RETURN.
     ENDIF.
 
     "-- 3. Read e-mail from ADR6 ---------------------------------------------
-    DATA(where_adr6)  = CONV rfc_db_opt( |ADDRNUMBER EQ '{ address_number }'| ).
+    DATA(where_adr6)  = VALUE esh_t_co_rfcrt_options( ( |( ADDRNUMBER EQ '{ address_lfa1 }' OR ADDRNUMBER EQ '{ address_kna1 }' )| ) ).
+    where_adr6        = VALUE #( BASE where_adr6 ( | AND PERSNUMBER EQ ''| ) ).
     DATA(fields_adr6) = VALUE stringtab( ( |ADDRNUMBER| ) ( |SMTP_ADDR| ) ( |FLGDEFAULT| ) ( |CONSNUMBER| ) ).
 
 
@@ -237,8 +237,8 @@ CLASS ZMM_CL_BP_UPD_MODEL IMPLEMENTATION.
                                                        fields_tab = adr6_fields
                                                        field_name = 'SMTP_ADDR' ).
         <fs_address_data>-std_no = extract_field_value( data_line  = <fs_addr6_row>
-                                                       fields_tab = adr6_fields
-                                                       field_name = 'FLGDEFAULT' ).
+                                                        fields_tab = adr6_fields
+                                                        field_name = 'FLGDEFAULT' ).
         <fs_address_data>-consnumber = extract_field_value( data_line  = <fs_addr6_row>
                                                             fields_tab = adr6_fields
                                                             field_name = 'CONSNUMBER' ).
@@ -250,7 +250,7 @@ CLASS ZMM_CL_BP_UPD_MODEL IMPLEMENTATION.
     ENDIF.
 
     "-- 4. Read address note from ADRT ---------------------------------------
-    DATA(where_adrt)  = CONV rfc_db_opt( |ADDRNUMBER EQ '{ address_number }'| ).
+    DATA(where_adrt)  = VALUE esh_t_co_rfcrt_options( ( |( ADDRNUMBER EQ '{ address_lfa1 }' OR ADDRNUMBER EQ '{ address_kna1 }' )| ) ).
     DATA(fields_adrt) = VALUE stringtab( ( |ADDRNUMBER| ) ( |REMARK| ) ( |LANGU| ) ( |CONSNUMBER| ) ).
 
 
@@ -331,7 +331,7 @@ CLASS ZMM_CL_BP_UPD_MODEL IMPLEMENTATION.
         OTHERS                  = 3.
 
     IF sy-subrc <> 0.
-      ev_error_msg = |Excel upload failed (ALSM_EXCEL_TO_INTERNAL_TABLE rc={ sy-subrc })|.
+      ev_error_msg = |Excel upload failed (TEXT_CONVERT_XLS_TO_SAP rc={ sy-subrc })|.
       RETURN.
     ENDIF.
 
@@ -349,8 +349,10 @@ CLASS ZMM_CL_BP_UPD_MODEL IMPLEMENTATION.
           <fs_data>-email = <fs_excel>-value.
         WHEN '0005'.
           <fs_data>-notes = <fs_excel>-value.
-        WHEN '0005'.
+        WHEN '0006'.
           <fs_data>-std_no = <fs_excel>-value.
+        WHEN '0007'.
+          <fs_data>-language = <fs_excel>-value.
       ENDCASE.
     ENDLOOP.
 
@@ -368,7 +370,7 @@ CLASS ZMM_CL_BP_UPD_MODEL IMPLEMENTATION.
 * +-------------------------------------------------------------------------------------------------+
 * | [--->] RFC_DESTINATION                TYPE        RFCDEST
 * | [--->] TABLE_NAME                     TYPE        TABNAME
-* | [--->] WHERE_CLAUSE                   TYPE        RFC_DB_OPT
+* | [--->] WHERE_CLAUSE                   TYPE        ESH_T_CO_RFCRT_OPTIONS
 * | [--->] FIELD_NAMES                    TYPE        STRINGTAB(optional)
 * | [<---] RESULT_ROWS                    TYPE        ESH_T_CO_RFCRT_DATA
 * | [<---] ERROR_MESSAGE                  TYPE        STRING
@@ -378,8 +380,8 @@ CLASS ZMM_CL_BP_UPD_MODEL IMPLEMENTATION.
   METHOD read_remote_table.
 
     DATA where_tab TYPE STANDARD TABLE OF rfc_db_opt.
-    where_tab = VALUE #( ( where_clause ) ).
 
+    where_tab = where_clause.
 
     DATA fields TYPE STANDARD TABLE OF rfc_db_fld.
     LOOP AT field_names INTO DATA(field_name).
